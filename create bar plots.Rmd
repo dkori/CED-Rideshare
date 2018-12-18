@@ -1,0 +1,127 @@
+---
+title: "Generate Plots"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gridExtra)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(reshape)
+
+load("PA-allegheny-philly driver rev estimates")
+```
+
+
+```{r create-plot-functions, echo=FALSE}
+plot_drivers_rev<-function(dataset,geo_string){
+  melted<-melt(dataset,"year")
+  names(melted)<-c("year","cols","value")
+for_drivers<-melted%>%filter(cols%in%c("Taxi Drivers", "Rideshare Drivers"))
+for_rev<-melted%>%filter(cols%in%c("Taxi Revenue","Rideshare Revenue"))
+
+driver_plot<-ggplot(data=for_drivers)+
+         geom_col()+
+         aes(x=year,y=value,fill=cols)+ggtitle(paste0(geo_string," Estimated drivers: \n Taxi vs Rideshare"))+
+  scale_y_continuous(name="Number of Drivers",labels=comma)+scale_fill_discrete(name = "")+theme(legend.position="bottom")
+
+rev_plot<-ggplot(data=for_rev)+
+  geom_col()+
+  aes(x=year,y=value,fill=cols)+ggtitle(paste0(geo_string," Estimated revenue: \n Taxi vs Rideshare"))+
+  scale_y_continuous(name="Revenue",labels=dollar_format())+theme(legend.position="bottom")+scale_fill_brewer(name="",palette="Dark2")
+
+grid.arrange(driver_plot,rev_plot,ncol=2)
+}
+```
+
+```{r plot-PA, echo=FALSE}
+
+melted<-melt(PA,"year")
+geo_string<-"PA"
+  names(melted)<-c("year","cols","value")
+  
+for_drivers<-melted%>%filter(cols%in%c("Taxi Drivers", "Rideshare Drivers"))
+for_rev<-melted%>%filter(cols%in%c("Taxi Revenue","Rideshare Revenue"))  
+  
+driver_plot<-ggplot(data=for_drivers)+
+         geom_col()+
+         aes(x=year,y=value,fill=cols)+ggtitle(paste0(geo_string," Estimated drivers: \n Taxi vs Rideshare"))+
+  scale_y_continuous(name="Number of Drivers",labels=comma)+scale_fill_discrete(name = "")+theme(legend.position="bottom")
+
+rev_plot<-ggplot(data=for_rev)+
+  geom_col()+
+  aes(x=year,y=value,fill=cols)+ggtitle(paste0(geo_string," Estimated revenue: \n Taxi vs Rideshare"))+
+  scale_y_continuous(name="Revenue ($1,000s)",labels=dollar_format())+theme(legend.position="bottom")+scale_fill_brewer(name="",palette="Dark2")
+
+grid.arrange(driver_plot,rev_plot,ncol=2)
+
+```
+
+
+```{r plot-AC, echo=FALSE}
+#plot_drivers_rev(AC,"Allegheny County \n")
+
+melted<-melt(AC,"year")
+geo_string<-"Allegheny County \n"
+  names(melted)<-c("year","cols","value")
+  
+for_drivers<-melted%>%filter(cols%in%c("Taxi Drivers", "Rideshare Drivers"))
+for_rev<-melted%>%filter(cols%in%c("Taxi Revenue","Rideshare Revenue"))
+
+driver_plot<-ggplot(data=for_drivers)+
+         geom_col()+
+         aes(x=year,y=value,fill=cols)+ggtitle(paste0(geo_string," Estimated drivers: \n Taxi vs Rideshare"))+
+  scale_y_continuous(name="Number of Drivers",labels=comma)+scale_fill_discrete(name = "")+theme(legend.position="bottom")
+
+rev_plot<-ggplot(data=for_rev)+
+  geom_col()+
+  aes(x=year,y=value,fill=cols)+ggtitle(paste0(geo_string," Estimated revenue: \n Taxi vs Rideshare"))+
+  scale_y_continuous(name="Revenue ($1,000s)",labels=dollar_format())+theme(legend.position="bottom")+scale_fill_brewer(name="",palette="Dark2")
+
+grid.arrange(driver_plot,rev_plot,ncol=2)
+
+
+```
+
+```{r plot-PC, echo=FALSE}
+melted<-melt(PC,"year")
+geo_string<-"Philadelphia County \n"
+  names(melted)<-c("year","cols","value")
+driver_plot<-ggplot(data=melted%>%filter(cols%in%c("Taxi Drivers","Rideshare Drivers")))+
+         geom_col()+
+         aes(x=year,y=value,fill=cols)+ggtitle(paste0(geo_string," Estimated drivers: \n Taxi vs Rideshare"))+
+  scale_y_continuous(name="Number of Drivers",labels=comma)+scale_fill_discrete(name = "")+theme(legend.position="bottom")
+
+rev_plot<-ggplot(data=melted%>%filter(cols%in%c("Taxi Revenue","Rideshare Revenue")))+
+  geom_col()+
+  aes(x=year,y=value,fill=cols)+ggtitle(paste0(geo_string," Estimated revenue: \n Taxi vs Rideshare"))+
+  scale_y_continuous(name="Revenue ($1,000s)",labels=dollar_format())+theme(legend.position="bottom")+scale_fill_brewer(name="",palette="Dark2")
+
+grid.arrange(driver_plot,rev_plot,ncol=2)
+
+```
+
+```{r results-table, echo=FALSE}
+PA$geo<-"All Pennsylvania"
+AC$geo<-"Allegheny County"
+PC$geo<-"Philadelphia"
+
+all_data<-rbind(PA,AC,PC)
+
+results_table<-aggregate(cbind(`Rideshare Drivers`, `Rideshare Revenue`)~geo,
+                         all_data%>%filter(year==2015),sum)%>%
+  merge(aggregate(cbind(`Rideshare Drivers`, `Rideshare Revenue`)~geo,
+                         all_data%>%filter(year==2016),sum),by="geo")%>%
+  mutate(`Drivers 2015`= `Rideshare Drivers.x`, `Revenue 2015`=`Rideshare Revenue.x`, 
+         `Drivers 2016`=`Rideshare Drivers.y`, `Revenue 2016`=`Rideshare Revenue.y`)%>%
+  select(geo,`Drivers 2015`, `Drivers 2016`, `Revenue 2015`, `Revenue 2016`)
+
+#write_csv(results_table,"drivers and rev 15 16.csv")
+
+```
+
